@@ -1,0 +1,16 @@
+version: "2"
+domain: menshen.io
+repo: github.com/it2911/menshen
+resources:
+- group: auth
+  version: v1beta1
+  kind: RoleExt
+- group: auth
+  version: v1beta1
+  kind: UserExt
+- group: auth
+  version: v1beta1
+  kind: RoleBindingExt
+- group: auth
+  version: v1beta1
+  kind: GroupExt

@@ -1,0 +1,7 @@
+apiVersion: auth.menshen.io/v1beta1
+kind: RoleBindingExt
+metadata:
+  name: rolebindingext-sample
+spec:
+  # Add fields here
+  foo: bar

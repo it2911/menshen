@@ -1,0 +1,88 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - auth.menshen.io
+  resources:
+  - groupexts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - auth.menshen.io
+  resources:
+  - groupexts/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - auth.menshen.io
+  resources:
+  - rolebindingexts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - auth.menshen.io
+  resources:
+  - rolebindingexts/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - auth.menshen.io
+  resources:
+  - roleexts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - auth.menshen.io
+  resources:
+  - roleexts/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - auth.menshen.io
+  resources:
+  - userexts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - auth.menshen.io
+  resources:
+  - userexts/status
+  verbs:
+  - get
+  - patch
+  - update

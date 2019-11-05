@@ -1,0 +1,7 @@
+apiVersion: auth.menshen.io/v1beta1
+kind: UserExt
+metadata:
+  name: userext-sample
+spec:
+  # Add fields here
+  foo: bar

@@ -1,0 +1,6 @@
+apiVersion: auth.menshen.io/v1beta1
+kind: RoleExt
+metadata:
+  name: roleext-sample
+spec:
+  # Add fields here
