@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/emirpasic/gods/maps/hashmap"
+	"github.com/it2911/menshen/pkg/authz"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -383,6 +385,13 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 
 	sarObject, _, err := deserializer.Decode(body, nil, &authorizationv1.SubjectAccessReview{})
 	sar := sarObject.(*authorizationv1.SubjectAccessReview)
+
+	namespaceMap, found := authz.RoleBindingMap.Get(sar.Spec.User)
+	if found {
+		namespaceMap.(*hashmap.Map).Get(sar.Spec.Groups)
+	} else {
+
+	}
 
 	if sar.Spec.User == "system:serviceaccount:default:default" {
 		fmt.Println(sar.Spec.User)

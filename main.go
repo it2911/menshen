@@ -17,15 +17,23 @@ limitations under the License.
 package main
 
 import (
+	"context"
+	"crypto/tls"
 	"flag"
+	"fmt"
+	"github.com/golang/glog"
 	authv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
+	"github.com/it2911/menshen/pkg/authz"
 	"github.com/it2911/menshen/pkg/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"net/http"
 	"os"
+	"os/signal"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"syscall"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -43,50 +51,52 @@ func init() {
 
 func main() {
 
-	// var parameters WhSvrParameters
+	var parameters WhSvrParameters
 
-	// // get command line parameters
-	// flag.IntVar(&parameters.port, "port", 30443, "Webhook server port.")
-	// flag.StringVar(&parameters.certFile, "tlsCertFile", "/home/chengchen/menshen/server.crt", "File containing the x509 Certificate for HTTPS.")
-	// flag.StringVar(&parameters.keyFile, "tlsKeyFile", "/home/chengchen/menshen/server.key", "File containing the x509 private key to --tlsCertFile.")
-	// flag.Parse()
+	// get command line parameters
+	flag.IntVar(&parameters.port, "port", 30443, "Webhook server port.")
+	flag.StringVar(&parameters.certFile, "tlsCertFile", "/home/chengchen/menshen/server.crt", "File containing the x509 Certificate for HTTPS.")
+	flag.StringVar(&parameters.keyFile, "tlsKeyFile", "/home/chengchen/menshen/server.key", "File containing the x509 private key to --tlsCertFile.")
+	flag.Parse()
 
-	// pair, err := tls.LoadX509KeyPair(parameters.certFile, parameters.keyFile)
-	// if err != nil {
-	// 	glog.Errorf("Failed to load key pair: %v", err)
-	// }
+	pair, err := tls.LoadX509KeyPair(parameters.certFile, parameters.keyFile)
+	if err != nil {
+		glog.Errorf("Failed to load key pair: %v", err)
+	}
 
-	// whsvr := &WebhookServer{
-	// 	server: &http.Server{
-	// 		Addr:      fmt.Sprintf(":%v", parameters.port),
-	// 		TLSConfig: &tls.Config{Certificates: []tls.Certificate{pair}},
-	// 	},
-	// }
+	whsvr := &WebhookServer{
+		server: &http.Server{
+			Addr:      fmt.Sprintf(":%v", parameters.port),
+			TLSConfig: &tls.Config{Certificates: []tls.Certificate{pair}},
+		},
+	}
 
-	// // define http server and server handler
-	// mux := http.NewServeMux()
-	// mux.HandleFunc("/mutate", whsvr.serve)
-	// mux.HandleFunc("/validate", whsvr.serve)
-	// //mux.HandleFunc("/authz", whsvr.serve)
-	// mux.HandleFunc("/authorize", whsvr.serve)
-	// whsvr.server.Handler = mux
+	// define http server and server handler
+	mux := http.NewServeMux()
+	mux.HandleFunc("/mutate", whsvr.serve)
+	mux.HandleFunc("/validate", whsvr.serve)
+	//mux.HandleFunc("/authz", whsvr.serve)
+	mux.HandleFunc("/authorize", whsvr.serve)
+	whsvr.server.Handler = mux
 
-	// // start webhook server in new routine
-	// go func() {
-	// 	if err := whsvr.server.ListenAndServeTLS("", ""); err != nil {
-	// 		glog.Errorf("Failed to listen and serve webhook server: %v", err)
-	// 	}
-	// }()
+	// start webhook server in new routine
+	go func() {
+		if err := whsvr.server.ListenAndServeTLS("", ""); err != nil {
+			glog.Errorf("Failed to listen and serve webhook server: %v", err)
+		}
+	}()
 
-	// glog.Info("Server started")
+	glog.Info("Server started")
 
-	// // listening OS shutdown singal
-	// signalChan := make(chan os.Signal, 1)
-	// signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-	// <-signalChan
+	// listening OS shutdown singal
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	<-signalChan
 
-	// glog.Infof("Got OS shutdown signal, shutting down webhook server gracefully...")
-	// whsvr.server.Shutdown(context.Background())
+	glog.Infof("Got OS shutdown signal, shutting down webhook server gracefully...")
+	whsvr.server.Shutdown(context.Background())
+
+	authz.Cache()
 
 	// CRD
 	var metricsAddr string
@@ -137,8 +147,6 @@ func main() {
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
-
-	cache()
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

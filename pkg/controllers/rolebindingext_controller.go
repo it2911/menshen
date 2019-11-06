@@ -23,7 +23,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	authv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
+	menshenv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
 )
 
 // RoleBindingExtReconciler reconciles a RoleBindingExt object
@@ -32,7 +32,7 @@ type RoleBindingExtReconciler struct {
 	Log logr.Logger
 }
 
-var RoleBindingExts []authv1beta1.Binding
+var RoleBindingExts []menshenv1beta1.Binding
 
 // +kubebuilder:rbac:groups=auth.menshen.io,resources=rolebindingexts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=auth.menshen.io,resources=rolebindingexts/status,verbs=get;update;patch
@@ -48,6 +48,6 @@ func (r *RoleBindingExtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 func (r *RoleBindingExtReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&authv1beta1.RoleBindingExt{}).
+		For(&menshenv1beta1.RoleBindingExt{}).
 		Complete(r)
 }

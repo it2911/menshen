@@ -3,7 +3,8 @@ package authz
 import (
 	"github.com/emirpasic/gods/maps/hashmap"
 	"github.com/emirpasic/gods/sets/hashset"
-	authv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
+	menshenv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
+	menshenext "github.com/it2911/menshen/pkg/ext"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"log"
@@ -13,17 +14,17 @@ import (
 
 var RoleBindingMap hashmap.Map
 
-func cache() {
+func Cache() {
 	kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
 	// BuildConfigFromFlags is a helper function that builds configs from a master url or
 	// a kubeconfig filepath.
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	logerror(err)
 
-	clientset, err := authv1beta1.NewForConfig(config)
+	clientset, err := menshenext.NewForConfig(config)
 	logerror(err)
 
-	groupextList := &authv1beta1.GroupExtList{}
+	groupextList := &menshenv1beta1.GroupExtList{}
 	groupextList, err = clientset.GroupExts().List(metav1.ListOptions{})
 	logerror(err)
 
@@ -32,7 +33,7 @@ func cache() {
 		groupMap[groupext.Name] = groupext.Spec.Users
 	}
 
-	rolebindingextList := &authv1beta1.RoleBindingExtList{}
+	rolebindingextList := &menshenv1beta1.RoleBindingExtList{}
 	rolebindingextList, err = clientset.RoleBindingExts().List(metav1.ListOptions{})
 	logerror(err)
 
@@ -62,7 +63,7 @@ func cache() {
 		}
 	}
 
-	roleextList := &authv1beta1.RoleExtList{}
+	roleextList := &menshenv1beta1.RoleExtList{}
 	roleextList, err = clientset.RoleExts().List(metav1.ListOptions{})
 	logerror(err)
 
