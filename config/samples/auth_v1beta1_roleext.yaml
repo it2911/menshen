@@ -3,4 +3,10 @@ kind: RoleExt
 metadata:
   name: roleext-sample
 spec:
-  # Add fields here
+  roles:
+    - namespaces:     [default]
+      apiGroups:      [v1]
+      verbs:          [get]
+      resources:      [secret]
+      resourceNames:  [default]
+

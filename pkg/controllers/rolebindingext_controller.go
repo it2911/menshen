@@ -32,8 +32,6 @@ type RoleBindingExtReconciler struct {
 	Log logr.Logger
 }
 
-var RoleBindingExts []menshenv1beta1.Binding
-
 // +kubebuilder:rbac:groups=auth.menshen.io,resources=rolebindingexts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=auth.menshen.io,resources=rolebindingexts/status,verbs=get;update;patch
 

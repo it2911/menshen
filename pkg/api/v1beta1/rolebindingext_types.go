@@ -28,20 +28,15 @@ type Subject struct {
 	Name string `json:"name,omitempty"`
 }
 
-type Binding struct {
-	Name      string    `json:"name,omitempty"`
+// RoleBindingExtSpec defines the desired state of RoleBindingExt
+type RoleBindingExtSpec struct {
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
 	Subjects  []Subject `json:"subjects,omitempty"`
 	RoleNames []string  `json:"roleNames,omitempty"`
 	Message   string    `json:"message,omitempty"`
 	Type      string    `json:"type,omitempty"`    // allow or deny
 	Crontab   string    `json:"crontab,omitempty"` //
-}
-
-// RoleBindingExtSpec defines the desired state of RoleBindingExt
-type RoleBindingExtSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	Bindings []Binding `json:"bindings,omitempty"`
 }
 
 // RoleBindingExtStatus defines the observed state of RoleBindingExt

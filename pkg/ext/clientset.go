@@ -2,6 +2,8 @@ package ext
 
 import (
 	menshenv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 )
 
@@ -17,7 +19,7 @@ func NewForConfig(c *rest.Config) (*MenshenV1Beta1Client, error) {
 	config := *c
 	config.ContentConfig.GroupVersion = &menshenv1beta1.GroupVersion
 	config.APIPath = "/apis"
-	//config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
+	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
 	config.UserAgent = rest.DefaultKubernetesUserAgent()
 
 	client, err := rest.RESTClientFor(&config)

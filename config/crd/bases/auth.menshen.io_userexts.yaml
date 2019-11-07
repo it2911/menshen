@@ -3,13 +3,17 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.2
   creationTimestamp: null
   name: userexts.auth.menshen.io
 spec:
   group: auth.menshen.io
   names:
     kind: UserExt
+    listKind: UserExtList
     plural: userexts
+    singular: userext
   scope: ""
   validation:
     openAPIV3Schema:

@@ -1,8 +1,8 @@
 package authz
 
 import (
+	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/emirpasic/gods/maps/hashmap"
-	"github.com/emirpasic/gods/sets/hashset"
 	menshenv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
 	menshenext "github.com/it2911/menshen/pkg/ext"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,9 +10,19 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-var RoleBindingMap hashmap.Map
+var UserMap = hashmap.New()
+var RoleBindingExtMap = hashmap.New()
+var RoleExtMap = hashmap.New()
+var GroupMap = hashmap.New()
+
+type RoleBindingInfo struct {
+	RoleExtNames []string
+	Type         string
+	Message      string
+}
 
 func Cache() {
 	kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
@@ -24,103 +34,77 @@ func Cache() {
 	clientset, err := menshenext.NewForConfig(config)
 	logerror(err)
 
+	roleExtList, err := clientset.RoleExts().List(metav1.ListOptions{})
+	logerror(err)
+
+	for _, roleExt := range roleExtList.Items {
+		roleName := roleExt.GetName()
+		for _, role := range roleExt.Spec.Roles {
+			verbMap := hashmap.New()
+			for _, verb := range role.Verbs {
+				resourceMap := hashmap.New()
+				for _, resource := range role.Resources {
+					resourceNameMap := hashmap.New()
+					for _, resourceName := range role.ResourceNames {
+						apiGroupMap := hashmap.New()
+						for _, apiGroup := range role.ApiGroups {
+							namespaceMap := hashmap.New()
+							for _, namespace := range role.Namespaces {
+								namespaceMap.Put(namespace, "")
+							}
+							apiGroupMap.Put(apiGroup, namespaceMap)
+						}
+						resourceNameMap.Put(resourceName, apiGroupMap)
+					}
+					resourceMap.Put(resource, resourceNameMap)
+				}
+				for _, nonresource := range role.NonResources {
+					resourceMap.Put(nonresource, "")
+				}
+				verbMap.Put(verb, resourceMap)
+			}
+			RoleExtMap.Put(roleName, verbMap)
+		}
+	}
+
 	groupextList := &menshenv1beta1.GroupExtList{}
 	groupextList, err = clientset.GroupExts().List(metav1.ListOptions{})
 	logerror(err)
-
-	groupMap := make(map[string][]string)
-	for _, groupext := range groupextList.Items {
-		groupMap[groupext.Name] = groupext.Spec.Users
+	for _, groupExt := range groupextList.Items {
+		GroupMap.Put(groupExt.Name, groupExt.Spec.Users)
 	}
 
-	rolebindingextList := &menshenv1beta1.RoleBindingExtList{}
-	rolebindingextList, err = clientset.RoleBindingExts().List(metav1.ListOptions{})
+	rolebindingextList, err := clientset.RoleBindingExts().List(metav1.ListOptions{})
 	logerror(err)
-
-	roleExtMap := hashmap.New()
-	roleMap := hashmap.New()
 	for _, rolebindingext := range rolebindingextList.Items {
-		for _, binding := range rolebindingext.Spec.Bindings {
-			userSet := hashset.New()
-			for _, subject := range binding.Subjects {
-				if subject.Kind == "User" || subject.Kind == "ServiceAccount" {
-					userSet.Add(subject.Name)
-				} else if subject.Kind == "Group" {
-					users := groupMap[subject.Name]
-					if users != nil {
-						for user := range users {
-							userSet.Add(user)
+
+		for _, subject := range rolebindingext.Spec.Subjects {
+			if strings.EqualFold(subject.Kind, "User") ||
+				strings.EqualFold(subject.Kind, "ServiceAccount") {
+
+				if rolebindingExtNameList, found := UserMap.Get(subject.Name); !found {
+					rolebindingExtNameList.(*arraylist.List).Add(rolebindingext.Name)
+					UserMap.Put(subject.Name, rolebindingExtNameList)
+				} else {
+					rolebindingExtNameList.(*arraylist.List).Add(rolebindingext.Name)
+				}
+			} else if strings.EqualFold(subject.Kind, "Group") {
+				users, found := GroupMap.Get(subject.Name)
+				if found {
+					for _, user := range users.([]string) {
+						if rolebindingExtNameList, found := UserMap.Get(user); !found {
+							rolebindingExtNameList.(*arraylist.List).Add(rolebindingext.Name)
+							UserMap.Put(user, rolebindingExtNameList)
+						} else {
+							rolebindingExtNameList.(*arraylist.List).Add(rolebindingext.Name)
 						}
 					}
 				}
 			}
-			for _, roleName := range binding.RoleNames {
-				var namespaceMap *hashmap.Map
-				namespaceMap = hashmap.New()
-				roleExtMap.Put(roleName, map[string]string{"type": binding.Type, "message": binding.Message})
-				RoleBindingMap.Put(userSet, namespaceMap)
-			}
-		}
-	}
-
-	roleextList := &menshenv1beta1.RoleExtList{}
-	roleextList, err = clientset.RoleExts().List(metav1.ListOptions{})
-	logerror(err)
-
-	for _, roleext := range roleextList.Items {
-		roleName := roleext.GetName()
-		nsmap, found := roleMap.Get(roleName)
-		var namespaceMap *hashmap.Map
-
-		if found {
-			namespaceMap = nsmap.(*hashmap.Map)
-		} else {
-			namespaceMap = hashmap.New()
-			roleMap.Put(roleName, namespaceMap)
 		}
 
-		for _, role := range roleext.Spec.Roles {
-			for _, namespace := range role.Namespaces {
-				if namespace == "*" || namespace == "" {
-					namespace = "_"
-				}
-				apigroupMap := hashmap.New()
-				for _, apigroup := range role.ApiGroups {
-					if apigroup == "*" || apigroup == "" {
-						apigroup = "_"
-					}
-					verbMap := hashmap.New()
-					for _, verb := range role.Verbs {
-						if verb == "*" || verb == "" {
-							verb = "_"
-						}
-						resourceMap := hashmap.New()
-						for _, resource := range role.Resources {
-							if resource == "*" || resource == "" {
-								resource = "_"
-							}
-							resourceNameMap := hashmap.New()
-							for _, resourceName := range role.ResourceNames {
-								if resourceName == "*" || resourceName == "" {
-									resourceName = "_"
-								}
-								resourceNameMap.Put(resourceName, "")
-							}
-							resourceMap.Put(resource, resourceNameMap)
-						}
-						for _, nonresource := range role.NonResources {
-							if nonresource == "*" || nonresource == "" {
-								nonresource = "_"
-							}
-							resourceMap.Put(nonresource, "")
-						}
-						verbMap.Put(verb, resourceMap)
-					}
-					apigroupMap.Put(apigroup, verbMap)
-				}
-				namespaceMap.Put(namespace, apigroupMap)
-			}
-		}
+		RoleBindingExtMap.Put(rolebindingext.Name,
+			RoleBindingInfo{RoleExtNames: rolebindingext.Spec.RoleNames, Type: rolebindingext.Spec.Type, Message: rolebindingext.Spec.Message})
 	}
 }
 

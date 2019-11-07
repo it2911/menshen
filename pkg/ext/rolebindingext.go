@@ -18,7 +18,7 @@ func (c *rolebindingextClient) List(opts metav1.ListOptions) (*menshenv1beta1.Ro
 	result := menshenv1beta1.RoleBindingExtList{}
 	err := c.restClient.
 		Get().
-		Resource("rolebindings").
+		Resource("rolebindingexts").
 		Do().
 		Into(&result)
 

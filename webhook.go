@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/emirpasic/gods/maps/hashmap"
 	"github.com/it2911/menshen/pkg/authz"
 	"io/ioutil"
@@ -386,11 +387,25 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 	sarObject, _, err := deserializer.Decode(body, nil, &authorizationv1.SubjectAccessReview{})
 	sar := sarObject.(*authorizationv1.SubjectAccessReview)
 
-	namespaceMap, found := authz.RoleBindingMap.Get(sar.Spec.User)
-	if found {
-		namespaceMap.(*hashmap.Map).Get(sar.Spec.Groups)
-	} else {
+	if rolebindingExtNameListI, found := authz.UserMap.Get(sar.Spec.User); found {
+		rolebindingNameList := rolebindingExtNameListI.(*arraylist.List)
 
+		rolebindingNameList.All(func(_ int, rolebindingName interface{}) bool {
+			rolebindingExtI, found := authz.RoleBindingExtMap.Get(rolebindingName)
+			if found {
+				rolebindingExt := rolebindingExtI.(authz.RoleBindingInfo)
+				for _, roleExtName := range rolebindingExt.RoleExtNames {
+					roleExt, found := authz.RoleExtMap.Get(roleExtName)
+					if found {
+						found = resourceRoleFound(sar, roleExt.(*hashmap.Map))
+						if found {
+							// TODO
+						}
+					}
+				}
+			}
+			return true
+		})
 	}
 
 	if sar.Spec.User == "system:serviceaccount:default:default" {
@@ -414,4 +429,79 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
 		}
 	}
+}
+
+func resourceRoleFound(sar *authorizationv1.SubjectAccessReview, roleExt *hashmap.Map) bool {
+
+	found := true
+	if resourceAttributes := sar.Spec.ResourceAttributes; resourceAttributes != nil {
+
+		var verbMapI interface{}
+		if verbMapI, found = roleExt.Get(resourceAttributes.Verb); !found {
+			if verbMapI, found = roleExt.Get("*"); !found {
+				return found
+			}
+		}
+
+		verbMap := verbMapI.(*hashmap.Map)
+		var resourceMapI interface{}
+		if resourceMapI, found = verbMap.Get(resourceAttributes.Resource); !found {
+			if resourceMapI, found = verbMap.Get("*"); !found {
+				return found
+			}
+		}
+
+		resourceMap := resourceMapI.(*hashmap.Map)
+		var resourceNameMapI interface{}
+		if resourceNameMapI, found = resourceMap.Get(resourceAttributes.Namespace); !found {
+			if resourceNameMapI, found = resourceMap.Get("*"); !found {
+				return found
+			}
+		}
+
+		resourceNameMap := resourceNameMapI.(*hashmap.Map)
+		var apiGroupMapI interface{}
+		apiGroup := resourceAttributes.Version
+		if resourceAttributes.Group != "" {
+			apiGroup = resourceAttributes.Group + "/" + apiGroup
+		}
+		if apiGroupMapI, found = resourceNameMap.Get(apiGroup); !found {
+			if apiGroupMapI, found = resourceNameMap.Get("*"); !found {
+				return found
+			}
+		}
+
+		apiGroupMap := apiGroupMapI.(*hashmap.Map)
+		var namespaceMapI interface{}
+		if namespaceMapI, found = apiGroupMap.Get(resourceAttributes.Name); !found {
+			if namespaceMapI, found = apiGroupMap.Get("*"); !found {
+				return found
+			}
+		}
+
+		namespaceMap := namespaceMapI.(*hashmap.Map)
+		if _, found = namespaceMap.Get(resourceAttributes.Name); !found {
+			if _, found = namespaceMap.Get("*"); !found {
+				return found
+			}
+		}
+
+	} else if nonResourceAttributes := sar.Spec.NonResourceAttributes; nonResourceAttributes != nil {
+
+		var resourceMapI interface{}
+		if resourceMapI, found = roleExt.Get(nonResourceAttributes.Verb); !found {
+			if resourceMapI, found = roleExt.Get("*"); !found {
+				return found
+			}
+		}
+
+		resourceMap := resourceMapI.(*hashmap.Map)
+		if _, found := resourceMap.Get("*"); !found {
+			if _, found = resourceMap.Get(nonResourceAttributes.Path); !found {
+				return found
+			}
+		}
+	}
+
+	return found
 }

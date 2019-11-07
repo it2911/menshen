@@ -51,6 +51,8 @@ func init() {
 
 func main() {
 
+	authz.Cache()
+
 	var parameters WhSvrParameters
 
 	// get command line parameters
@@ -95,8 +97,6 @@ func main() {
 
 	glog.Infof("Got OS shutdown signal, shutting down webhook server gracefully...")
 	whsvr.server.Shutdown(context.Background())
-
-	authz.Cache()
 
 	// CRD
 	var metricsAddr string
