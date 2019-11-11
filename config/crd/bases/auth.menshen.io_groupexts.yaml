@@ -14,7 +14,7 @@ spec:
     listKind: GroupExtList
     plural: groupexts
     singular: groupext
-  scope: ""
+  scope: Cluster
   validation:
     openAPIV3Schema:
       description: GroupExt is the Schema for the groupexts API

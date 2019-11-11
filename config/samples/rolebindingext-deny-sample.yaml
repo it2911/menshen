@@ -1,0 +1,13 @@
+apiVersion: auth.menshen.io/v1beta1
+kind: RoleBindingExt
+metadata:
+  name: rolebindingext-deny-sample
+spec:
+  subjects:
+    - kind: group
+      name: groupext-user-sample
+    - kind: group
+      name: groupext-sa-sample
+  roleNames: [roleext-deny-sample]
+  message:  "This command is Forbidden."
+  type:     "deny"

@@ -1,0 +1,10 @@
+apiVersion: auth.menshen.io/v1beta1
+kind: RoleBindingExt
+metadata:
+  name: rolebindingext-allow-sample
+spec:
+  subjects:
+    - kind: group
+      name: groupext-sa-sample
+  roleNames: [roleext-allow-sample]
+  type: "allow"

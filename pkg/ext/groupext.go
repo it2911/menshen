@@ -8,10 +8,23 @@ import (
 
 type GroupExtInterface interface {
 	List(opts metav1.ListOptions) (*menshenv1beta1.GroupExtList, error)
+	Get(resourceName string) (*menshenv1beta1.GroupExt, error)
 }
 
 type groupextClient struct {
 	restClient rest.Interface
+}
+
+func (c *groupextClient) Get(resourceName string) (*menshenv1beta1.GroupExt, error) {
+	result := menshenv1beta1.GroupExt{}
+	err := c.restClient.
+		Get().
+		Resource("groupexts").
+		Name(resourceName).
+		Do().
+		Into(&result)
+
+	return &result, err
 }
 
 func (c *groupextClient) List(opts metav1.ListOptions) (*menshenv1beta1.GroupExtList, error) {

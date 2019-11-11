@@ -1,0 +1,7 @@
+apiVersion: auth.menshen.io/v1beta1
+kind: GroupExt
+metadata:
+  name: groupext-sa-sample
+spec:
+  users:
+    - "system:serviceaccount:menshen:test"

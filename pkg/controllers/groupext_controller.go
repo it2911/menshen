@@ -18,13 +18,19 @@ package controllers
 
 import (
 	"context"
-
+	"encoding/json"
+	"github.com/emirpasic/gods/maps/hashmap"
 	"github.com/go-logr/logr"
+	"github.com/it2911/menshen/pkg/ext"
+	"github.com/it2911/menshen/pkg/utils"
+	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	authv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
+	menshenv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
 )
+
+var GroupUserMap = hashmap.New()
 
 // GroupExtReconciler reconciles a GroupExt object
 type GroupExtReconciler struct {
@@ -39,13 +45,25 @@ func (r *GroupExtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	_ = r.Log.WithValues("groupext", req.NamespacedName)
 
-	// your logic here
+	groupName := req.Name
+	groupExt, err := ext.MenShenClientSet.GroupExts().Get(req.Name)
+	utils.HandleErr(err)
 
-	return ctrl.Result{}, nil
+	if groupExt.UID == "" {
+		GroupUserMap.Remove(groupName)
+		klog.Infof("Group Map remove %s group", groupName)
+	} else {
+		GroupUserMap.Put(groupName, groupExt.Spec.Users)
+		logString, err := json.Marshal(groupExt.Spec.Users)
+		utils.HandleErr(err)
+		klog.Infof("Group Map add %s group, user list %s", groupName, string(logString))
+	}
+
+	return ctrl.Result{}, err
 }
 
 func (r *GroupExtReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&authv1beta1.GroupExt{}).
+		For(&menshenv1beta1.GroupExt{}).
 		Complete(r)
 }

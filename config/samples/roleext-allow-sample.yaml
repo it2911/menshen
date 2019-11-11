@@ -1,12 +1,12 @@
 apiVersion: auth.menshen.io/v1beta1
 kind: RoleExt
 metadata:
-  name: roleext-sample
+  name: roleext-allow-sample
 spec:
   roles:
     - namespaces:     [default]
       apiGroups:      [v1]
       verbs:          [get]
-      resources:      [secret]
-      resourceNames:  [default]
+      resources:      [service]
+      resourceNames:  [kubernetes]
 

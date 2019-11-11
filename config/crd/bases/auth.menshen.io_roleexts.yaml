@@ -14,7 +14,7 @@ spec:
     listKind: RoleExtList
     plural: roleexts
     singular: roleext
-  scope: ""
+  scope: Cluster
   validation:
     openAPIV3Schema:
       description: RoleExt is the Schema for the roleexts API

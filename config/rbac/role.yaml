@@ -49,26 +49,6 @@ rules:
 - apiGroups:
   - auth.menshen.io
   resources:
-  - roleexts
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - auth.menshen.io
-  resources:
-  - roleexts/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - auth.menshen.io
-  resources:
   - userexts
   verbs:
   - create

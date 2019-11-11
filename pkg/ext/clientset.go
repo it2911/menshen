@@ -2,10 +2,16 @@ package ext
 
 import (
 	menshenv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
+	"github.com/it2911/menshen/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"os"
+	"path/filepath"
 )
+
+var MenShenClientSet *MenshenV1Beta1Client
 
 type MenshenV1Beta1Interface interface {
 	UserExts(namespace string) UserExtInterface
@@ -28,6 +34,17 @@ func NewForConfig(c *rest.Config) (*MenshenV1Beta1Client, error) {
 	}
 
 	return &MenshenV1Beta1Client{restClient: client}, nil
+}
+
+func InitClient() {
+	kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+	// BuildConfigFromFlags is a helper function that builds configs from a master url or
+	// a kubeconfig filepath.
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	utils.HandleErr(err)
+
+	MenShenClientSet, err = NewForConfig(config)
+	utils.HandleErr(err)
 }
 
 func (c *MenshenV1Beta1Client) UserExts() UserExtInterface {

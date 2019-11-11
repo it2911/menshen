@@ -22,9 +22,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/golang/glog"
-	authv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
-	"github.com/it2911/menshen/pkg/authz"
+	menshenv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
 	"github.com/it2911/menshen/pkg/controllers"
+	menshenvExt "github.com/it2911/menshen/pkg/ext"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -45,14 +45,16 @@ var (
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 
-	_ = authv1beta1.AddToScheme(scheme)
+	_ = menshenv1beta1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
 func main() {
 
-	authz.Cache()
+	//authz.Cache()
+	menshenvExt.InitClient()
 
+	// Webook Start
 	var parameters WhSvrParameters
 
 	// get command line parameters
@@ -90,15 +92,7 @@ func main() {
 
 	glog.Info("Server started")
 
-	// listening OS shutdown singal
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-	<-signalChan
-
-	glog.Infof("Got OS shutdown signal, shutting down webhook server gracefully...")
-	whsvr.server.Shutdown(context.Background())
-
-	// CRD
+	// CRD Start
 	var metricsAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
@@ -153,4 +147,12 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+
+	// listening OS shutdown singal
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	<-signalChan
+
+	glog.Infof("Got OS shutdown signal, shutting down webhook server gracefully...")
+	whsvr.server.Shutdown(context.Background())
 }

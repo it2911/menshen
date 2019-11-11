@@ -14,7 +14,7 @@ spec:
     listKind: RoleBindingExtList
     plural: rolebindingexts
     singular: rolebindingext
-  scope: ""
+  scope: Cluster
   validation:
     openAPIV3Schema:
       description: RoleBindingExt is the Schema for the rolebindingexts API
@@ -34,30 +34,32 @@ spec:
         spec:
           description: RoleBindingExtSpec defines the desired state of RoleBindingExt
           properties:
-            crontab:
+            cron:
               type: string
             message:
-              type: string
-            name:
-              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                Important: Run "make" to regenerate code after modifying this file'
               type: string
             roleNames:
               items:
                 type: string
               type: array
             subjects:
+              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                Important: Run "make" to regenerate code after modifying this file'
               items:
                 properties:
                   kind:
                     type: string
+                    enum: ['user', 'serviceaccount', 'group']
                   name:
                     type: string
                 type: object
               type: array
             type:
               type: string
+              nullable: false
+              enum: ['allow', 'deny']
           type: object
+          required: ['roleNames', 'subjects', 'type']
         status:
           description: RoleBindingExtStatus defines the observed state of RoleBindingExt
           type: object
