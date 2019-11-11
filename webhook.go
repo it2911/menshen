@@ -395,15 +395,17 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, groupName := range controllers.GroupBindingMap.Keys() {
-		users, _ := controllers.GroupUserMap.Get(groupName)
-		for _, user := range users.([]string) {
-			if user == username {
-				if roleBindingExtNameListI, found := controllers.GroupBindingMap.Get(groupName); found {
-					sarRespState, found = CheckAllowRole(roleBindingExtNameListI.(*hashset.Set), sar)
-					if found {
-						sar.Status = sarRespState
-						SubjectAccessReviewResponse(w, sar)
-						return
+		users, found := controllers.GroupUserMap.Get(groupName)
+		if found {
+			for _, user := range users.([]string) {
+				if user == username {
+					if roleBindingExtNameListI, found := controllers.GroupBindingMap.Get(groupName); found {
+						sarRespState, found = CheckAllowRole(roleBindingExtNameListI.(*hashset.Set), sar)
+						if found {
+							sar.Status = sarRespState
+							SubjectAccessReviewResponse(w, sar)
+							return
+						}
 					}
 				}
 			}
@@ -421,14 +423,16 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, groupName := range controllers.GroupBindingMap.Keys() {
-		users, _ := controllers.GroupUserMap.Get(groupName)
-		for _, user := range users.([]string) {
-			if user == username {
-				if rolebindingExtNameListI, found := controllers.GroupBindingMap.Get(groupName); found {
-					if sarRespState, found = CheckDenyRole(rolebindingExtNameListI.(*hashset.Set), sar); found {
-						sar.Status = sarRespState
-						SubjectAccessReviewResponse(w, sar)
-						return
+		users, found := controllers.GroupUserMap.Get(groupName)
+		if found {
+			for _, user := range users.([]string) {
+				if user == username {
+					if rolebindingExtNameListI, found := controllers.GroupBindingMap.Get(groupName); found {
+						if sarRespState, found = CheckDenyRole(rolebindingExtNameListI.(*hashset.Set), sar); found {
+							sar.Status = sarRespState
+							SubjectAccessReviewResponse(w, sar)
+							return
+						}
 					}
 				}
 			}

@@ -1,0 +1,19 @@
+apiVersion: auth.menshen.io/v1beta1
+kind: RoleExt
+metadata:
+  name: roleext-deny-sample
+spec:
+  roles:
+    - namespaces:     [default]
+      apiGroups:      [v1]
+      verbs:          [get]
+      resources:      [pod, secret]
+      resourceNames:  [default]
+    - namespaces:     [default]
+      apiGroups:      [v1]
+      verbs:          [list]
+      resources:      [pod, secret]
+    - apiGroups:      [rbac.authorization.k8s.io/v1]
+      verbs:          [list]
+      resources:      [clusterrole]
+

@@ -46,7 +46,7 @@ func (r *GroupExtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("groupext", req.NamespacedName)
 
 	groupName := req.Name
-	groupExt, err := ext.MenShenClientSet.GroupExts().Get(req.Name, req.Namespace)
+	groupExt, err := ext.MenShenClientSet.GroupExts().Get(req.Name)
 	utils.HandleErr(err)
 
 	if groupExt.UID == "" {
@@ -59,7 +59,7 @@ func (r *GroupExtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		klog.Infof("Group Map add %s group, user list %s", groupName, string(logString))
 	}
 
-	return ctrl.Result{Requeue: false}, err
+	return ctrl.Result{}, err
 }
 
 func (r *GroupExtReconciler) SetupWithManager(mgr ctrl.Manager) error {

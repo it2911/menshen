@@ -52,7 +52,7 @@ func (r *RoleExtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("roleext", req.NamespacedName)
 
 	roleName := req.Name
-	roleExt, err := ext.MenShenClientSet.RoleExts().Get(req.Name, req.Namespace)
+	roleExt, err := ext.MenShenClientSet.RoleExts().Get(req.Name)
 	if err != nil {
 		klog.Error(err)
 	}

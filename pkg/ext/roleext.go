@@ -8,7 +8,7 @@ import (
 
 type RoleExtInterface interface {
 	List(opts metav1.ListOptions) (*menshenv1beta1.RoleExtList, error)
-	Get(resourceName string, namespace string) (*menshenv1beta1.RoleExt, error)
+	Get(resourceName string) (*menshenv1beta1.RoleExt, error)
 }
 
 type roleextClient struct {
@@ -26,13 +26,12 @@ func (c *roleextClient) List(opts metav1.ListOptions) (*menshenv1beta1.RoleExtLi
 	return &result, err
 }
 
-func (c *roleextClient) Get(resourceName string, namespace string) (*menshenv1beta1.RoleExt, error) {
+func (c *roleextClient) Get(resourceName string) (*menshenv1beta1.RoleExt, error) {
 	result := menshenv1beta1.RoleExt{}
 	err := c.restClient.
 		Get().
 		Resource("roleexts").
 		Name(resourceName).
-		Namespace(namespace).
 		Do().
 		Into(&result)
 

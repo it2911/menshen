@@ -46,6 +46,7 @@ type RoleExtStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:path=roleexts,scope=Cluster
 
 // RoleExt is the Schema for the roleexts API
 type RoleExt struct {

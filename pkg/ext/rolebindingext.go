@@ -8,20 +8,19 @@ import (
 
 type RoleBindingExtInterface interface {
 	List(opts metav1.ListOptions) (*menshenv1beta1.RoleBindingExtList, error)
-	Get(resourceName string, namespace string) (*menshenv1beta1.RoleBindingExt, error)
+	Get(resourceName string) (*menshenv1beta1.RoleBindingExt, error)
 }
 
 type rolebindingextClient struct {
 	restClient rest.Interface
 }
 
-func (c *rolebindingextClient) Get(resourceName string, namespace string) (*menshenv1beta1.RoleBindingExt, error) {
+func (c *rolebindingextClient) Get(resourceName string) (*menshenv1beta1.RoleBindingExt, error) {
 	result := menshenv1beta1.RoleBindingExt{}
 	err := c.restClient.
 		Get().
 		Resource("rolebindingexts").
 		Name(resourceName).
-		Namespace(namespace).
 		Do().
 		Into(&result)
 

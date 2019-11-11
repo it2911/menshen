@@ -57,7 +57,7 @@ func (r *RoleBindingExtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	_ = r.Log.WithValues("rolebindingext", req.NamespacedName)
 
 	roleBindingExtName := req.Name
-	roleBindingExt, err := ext.MenShenClientSet.RoleBindingExts().Get(req.Name, req.Namespace)
+	roleBindingExt, err := ext.MenShenClientSet.RoleBindingExts().Get(req.Name)
 
 	if err != nil {
 		if _, found := RoleBindingExtAllowMap.Get(roleBindingExtName); found {
@@ -77,9 +77,9 @@ func (r *RoleBindingExtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 				roleBindingExtNameList := roleBindingExtNameListI.(*hashset.Set)
 				roleBindingExtNameList.Remove(roleBindingExtName)
 
-				logString, err := json.Marshal(roleBindingExtNameList)
-				utils.HandleErr(err)
-				klog.Infof("GroupBindingMap ％s remove %s, left %s .", key, roleBindingExtName, logString)
+				//logString, err := json.Marshal(roleBindingExtNameList)
+				//utils.HandleErr(err)
+				//klog.Infof("GroupBindingMap ％s remove %s, left %s .", key, roleBindingExtName, logString)
 
 				if roleBindingExtNameList.Size() == 0 {
 					GroupBindingMap.Remove(key)
@@ -95,9 +95,9 @@ func (r *RoleBindingExtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 				roleBindingExtNameList := roleBindingExtNameListI.(*hashset.Set)
 				roleBindingExtNameList.Remove(roleBindingExtName)
 
-				logString, err := json.Marshal(roleBindingExtNameList)
-				utils.HandleErr(err)
-				klog.Infof("GroupBindingMap ％s remove %s, left %s .", key, roleBindingExtName, logString)
+				//logString, err := json.Marshal(roleBindingExtNameList)
+				//utils.HandleErr(err)
+				//klog.Infof("GroupBindingMap ％s remove %s, left %s .", key, roleBindingExtName, logString)
 
 				if roleBindingExtNameList.Size() == 0 {
 					UserBindingMap.Remove(key)

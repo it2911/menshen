@@ -37,6 +37,7 @@ type GroupExtStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:path=groupexts,scope=Cluster
 
 // GroupExt is the Schema for the groupexts API
 type GroupExt struct {

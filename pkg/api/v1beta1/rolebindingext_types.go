@@ -46,6 +46,7 @@ type RoleBindingExtStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:path=rolebindingexts,scope=Cluster
 
 // RoleBindingExt is the Schema for the rolebindingexts API
 type RoleBindingExt struct {
