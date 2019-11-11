@@ -1,7 +1,7 @@
 apiVersion: auth.menshen.io/v1beta1
 kind: GroupExt
 metadata:
-  name: groupext-sample
+  name: groupext-sample2
 spec:
   users:
     - "chen.cheng"

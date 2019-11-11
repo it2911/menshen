@@ -1,115 +1,77 @@
 package authz
 
-import (
-	"github.com/emirpasic/gods/lists/arraylist"
-	"github.com/emirpasic/gods/maps/hashmap"
-	menshenv1beta1 "github.com/it2911/menshen/pkg/api/v1beta1"
-	menshenext "github.com/it2911/menshen/pkg/ext"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/clientcmd"
-	"log"
-	"os"
-	"path/filepath"
-	"strings"
-)
-
-var UserMap = hashmap.New()
-var RoleBindingExtMap = hashmap.New()
-var RoleExtMap = hashmap.New()
-var GroupMap = hashmap.New()
-
-type RoleBindingInfo struct {
-	RoleExtNames []string
-	Type         string
-	Message      string
-}
+//var UserBindingMap = hashmap.New()
+//var GroupBindingMap = hashmap.New()
+//var GroupUserMap = hashmap.New()
+//var RoleBindingExtAllowMap = hashmap.New()
+//var RoleBindingExtDenyMap = hashmap.New()
+//var ClientSet *menshenext.MenshenV1Beta1Client
+//
+//type RoleBindingExtInfo struct {
+//	RoleExtNames 	[]string
+//	Message			string
+//}
 
 func Cache() {
-	kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-	// BuildConfigFromFlags is a helper function that builds configs from a master url or
-	// a kubeconfig filepath.
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	logerror(err)
+	//kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+	//// BuildConfigFromFlags is a helper function that builds configs from a master url or
+	//// a kubeconfig filepath.
+	//config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	//utils.HandleErr(err)
+	//
+	//ClientSet, err = menshenext.NewForConfig(config)
+	//utils.HandleErr(err)
 
-	clientset, err := menshenext.NewForConfig(config)
-	logerror(err)
+	//roleExtList, err := ClientSet.RoleExts().List(metav1.ListOptions{})
+	//utils.HandleErr(err)
+	//
+	//for _, roleExt := range roleExtList.Items {
+	//	roleName := roleExt.GetName()
+	//	roleMap := menshencontroller.GetRoleExtInfo(roleExt.Spec.Roles)
+	//	RoleExtMap.Put(roleName, roleMap)
+	//}
 
-	roleExtList, err := clientset.RoleExts().List(metav1.ListOptions{})
-	logerror(err)
+	//groupextList := &menshenv1beta1.GroupExtList{}
+	//groupextList, err = ClientSet.GroupExts().List(metav1.ListOptions{})
+	//utils.HandleErr(err)
+	//for _, groupExt := range groupextList.Items {
+	//	GroupUserMap.Put(groupExt.Name, groupExt.Spec.Users)
+	//}
 
-	for _, roleExt := range roleExtList.Items {
-		roleName := roleExt.GetName()
-		for _, role := range roleExt.Spec.Roles {
-			verbMap := hashmap.New()
-			for _, verb := range role.Verbs {
-				resourceMap := hashmap.New()
-				for _, resource := range role.Resources {
-					resourceNameMap := hashmap.New()
-					for _, resourceName := range role.ResourceNames {
-						apiGroupMap := hashmap.New()
-						for _, apiGroup := range role.ApiGroups {
-							namespaceMap := hashmap.New()
-							for _, namespace := range role.Namespaces {
-								namespaceMap.Put(namespace, "")
-							}
-							apiGroupMap.Put(apiGroup, namespaceMap)
-						}
-						resourceNameMap.Put(resourceName, apiGroupMap)
-					}
-					resourceMap.Put(resource, resourceNameMap)
-				}
-				for _, nonresource := range role.NonResources {
-					resourceMap.Put(nonresource, "")
-				}
-				verbMap.Put(verb, resourceMap)
-			}
-			RoleExtMap.Put(roleName, verbMap)
-		}
-	}
-
-	groupextList := &menshenv1beta1.GroupExtList{}
-	groupextList, err = clientset.GroupExts().List(metav1.ListOptions{})
-	logerror(err)
-	for _, groupExt := range groupextList.Items {
-		GroupMap.Put(groupExt.Name, groupExt.Spec.Users)
-	}
-
-	rolebindingextList, err := clientset.RoleBindingExts().List(metav1.ListOptions{})
-	logerror(err)
-	for _, rolebindingext := range rolebindingextList.Items {
-
-		for _, subject := range rolebindingext.Spec.Subjects {
-			if strings.EqualFold(subject.Kind, "User") ||
-				strings.EqualFold(subject.Kind, "ServiceAccount") {
-
-				if rolebindingExtNameList, found := UserMap.Get(subject.Name); !found {
-					rolebindingExtNameList.(*arraylist.List).Add(rolebindingext.Name)
-					UserMap.Put(subject.Name, rolebindingExtNameList)
-				} else {
-					rolebindingExtNameList.(*arraylist.List).Add(rolebindingext.Name)
-				}
-			} else if strings.EqualFold(subject.Kind, "Group") {
-				users, found := GroupMap.Get(subject.Name)
-				if found {
-					for _, user := range users.([]string) {
-						if rolebindingExtNameList, found := UserMap.Get(user); !found {
-							rolebindingExtNameList.(*arraylist.List).Add(rolebindingext.Name)
-							UserMap.Put(user, rolebindingExtNameList)
-						} else {
-							rolebindingExtNameList.(*arraylist.List).Add(rolebindingext.Name)
-						}
-					}
-				}
-			}
-		}
-
-		RoleBindingExtMap.Put(rolebindingext.Name,
-			RoleBindingInfo{RoleExtNames: rolebindingext.Spec.RoleNames, Type: rolebindingext.Spec.Type, Message: rolebindingext.Spec.Message})
-	}
-}
-
-func logerror(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
+	//rolebindingextList, err := ClientSet.RoleBindingExts().List(metav1.ListOptions{})
+	//utils.HandleErr(err)
+	//for _, rolebindingext := range rolebindingextList.Items {
+	//
+	//	for _, subject := range rolebindingext.Spec.Subjects {
+	//		if strings.EqualFold(subject.Kind, "User") ||
+	//			strings.EqualFold(subject.Kind, "ServiceAccount") {
+	//
+	//			if rolebindingExtNameList, found := UserBindingMap.Get(subject.Name); found {
+	//				rolebindingExtNameList = append(rolebindingExtNameList.([]string), rolebindingext.Name)
+	//			} else {
+	//				rolebindingExtNameList := []string{}
+	//				rolebindingExtNameList = append(rolebindingExtNameList, rolebindingext.Name)
+	//				UserBindingMap.Put(subject.Name, rolebindingExtNameList)
+	//			}
+	//		} else if strings.EqualFold(subject.Kind, "Group") {
+	//
+	//			if rolebindingExtNameList, found := GroupBindingMap.Get(subject.Name); found {
+	//				rolebindingExtNameList = append(rolebindingExtNameList.([]string), rolebindingext.Name)
+	//			} else {
+	//				rolebindingExtNameList := []string{}
+	//				rolebindingExtNameList = append(rolebindingExtNameList, rolebindingext.Name)
+	//				GroupBindingMap.Put(subject.Name, rolebindingExtNameList)
+	//			}
+	//		}
+	//	}
+	//
+	//	if strings.EqualFold(rolebindingext.Spec.Type, "allow") {
+	//		RoleBindingExtAllowMap.Put(rolebindingext.Name, RoleBindingExtInfo{RoleExtNames: rolebindingext.Spec.RoleNames})
+	//	}else if strings.EqualFold(rolebindingext.Spec.Type, "deny") {
+	//		RoleBindingExtDenyMap.Put(rolebindingext.Name, RoleBindingExtInfo{RoleExtNames: rolebindingext.Spec.RoleNames, Message: rolebindingext.Spec.Message})
+	//	}else {
+	//		// TODO
+	//		klog.Error("Without type:" + rolebindingext.Name)
+	//	}
+	//}
 }

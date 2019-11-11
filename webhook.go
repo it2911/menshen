@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/emirpasic/gods/maps/hashmap"
-	"github.com/it2911/menshen/pkg/authz"
+	"github.com/gertd/go-pluralize"
+	"github.com/it2911/menshen/pkg/controllers"
+	"github.com/it2911/menshen/pkg/utils"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -354,13 +355,12 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 	} else {
-		fmt.Println(r.URL.Path)
 		if r.URL.Path == "/mutate" {
 			admissionResponse = whsvr.mutate(&ar)
 		} else if r.URL.Path == "/validate" {
 			admissionResponse = whsvr.validate(&ar)
 		} else if r.URL.Path == "/authorize" {
-			klog.Info("this is authorize")
+
 		}
 	}
 
@@ -372,125 +372,145 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	resp, err := json.Marshal(admissionReview)
-	if err != nil {
-		glog.Errorf("Can't encode response: %v", err)
-		http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)
-	}
-	glog.Infof(string(body))
-	fmt.Println(string(body))
+	//	klog.Info(string(body))
+	//fmt.Println(string(body))
 
 	scheme := runtime.NewScheme()
 	codecFactory := serializer.NewCodecFactory(scheme)
 	deserializer := codecFactory.UniversalDeserializer()
 
 	sarObject, _, err := deserializer.Decode(body, nil, &authorizationv1.SubjectAccessReview{})
+	utils.HandleErr(err)
+
 	sar := sarObject.(*authorizationv1.SubjectAccessReview)
+	var sarRespState authorizationv1.SubjectAccessReviewStatus
+	username := sar.Spec.User
 
-	if rolebindingExtNameListI, found := authz.UserMap.Get(sar.Spec.User); found {
-		rolebindingNameList := rolebindingExtNameListI.(*arraylist.List)
+	// Allow Role Check
+	if rolebindingExtNameListI, found := controllers.UserBindingMap.Get(sar.Spec.User); found {
+		sarRespState, found = CheckAllowRole(rolebindingExtNameListI.([]string), sar)
+		if found {
+			sar.Status = sarRespState
+			SubjectAccessReviewResponse(w, sar)
+			return
+		}
+	}
 
-		rolebindingNameList.All(func(_ int, rolebindingName interface{}) bool {
-			rolebindingExtI, found := authz.RoleBindingExtMap.Get(rolebindingName)
-			if found {
-				rolebindingExt := rolebindingExtI.(authz.RoleBindingInfo)
-				for _, roleExtName := range rolebindingExt.RoleExtNames {
-					roleExt, found := authz.RoleExtMap.Get(roleExtName)
+	for _, groupName := range controllers.GroupBindingMap.Keys() {
+		users, _ := controllers.GroupUserMap.Get(groupName)
+		for _, user := range users.([]string) {
+			if user == username {
+				if rolebindingExtNameListI, found := controllers.GroupBindingMap.Get(groupName); found {
+					sarRespState, found = CheckAllowRole(rolebindingExtNameListI.([]string), sar)
 					if found {
-						found = resourceRoleFound(sar, roleExt.(*hashmap.Map))
-						if found {
-							// TODO
-						}
+						sar.Status = sarRespState
+						SubjectAccessReviewResponse(w, sar)
+						return
 					}
 				}
 			}
-			return true
-		})
-	}
-
-	if sar.Spec.User == "system:serviceaccount:default:default" {
-		fmt.Println(sar.Spec.User)
-		sarRespState := authorizationv1.SubjectAccessReviewStatus{Denied: true, Reason: "hahaha,jiuburangnihege"}
-		sarResp := authorizationv1.SubjectAccessReview{Status: sarRespState}
-		resp, err = json.Marshal(sarResp)
-
-		//exampleRestClient, err := rest.UnversionedRESTClientFor(&crdConfig)
-		//exampleRestClient.Get().Resource().Do().Into()
-
-		if _, err := w.Write(resp); err != nil {
-			glog.Errorf("Can't write response: %v", err)
-			http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
-		}
-	} else {
-
-		glog.Infof("Ready to write reponse ...")
-		if _, err := w.Write(resp); err != nil {
-			glog.Errorf("Can't write response: %v", err)
-			http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
 		}
 	}
+
+	// Deny Role Check
+	if rolebindingExtNameListI, found := controllers.UserBindingMap.Get(sar.Spec.User); found {
+		sarRespState, found = CheckDenyRole(rolebindingExtNameListI.([]string), sar)
+		if found {
+			sar.Status = sarRespState
+			SubjectAccessReviewResponse(w, sar)
+			return
+		}
+	}
+
+	for _, groupName := range controllers.GroupBindingMap.Keys() {
+		users, _ := controllers.GroupUserMap.Get(groupName)
+		for _, user := range users.([]string) {
+			if user == username {
+				if rolebindingExtNameListI, found := controllers.GroupBindingMap.Get(groupName); found {
+					if sarRespState, found = CheckDenyRole(rolebindingExtNameListI.([]string), sar); found {
+						sar.Status = sarRespState
+						SubjectAccessReviewResponse(w, sar)
+						return
+					}
+				}
+			}
+		}
+	}
+
+	sar.Status = authorizationv1.SubjectAccessReviewStatus{Allowed: true}
+	SubjectAccessReviewResponse(w, sar)
 }
 
-func resourceRoleFound(sar *authorizationv1.SubjectAccessReview, roleExt *hashmap.Map) bool {
+func resourceRoleFound(sar *authorizationv1.SubjectAccessReview, roleExt controllers.RoleExtInfo) bool {
 
 	found := true
+	pluralize := pluralize.NewClient()
+
 	if resourceAttributes := sar.Spec.ResourceAttributes; resourceAttributes != nil {
 
+		if resourceAttributes.Namespace == "" {
+			resourceAttributes.Namespace = "_"
+		}
+
 		var verbMapI interface{}
-		if verbMapI, found = roleExt.Get(resourceAttributes.Verb); !found {
-			if verbMapI, found = roleExt.Get("*"); !found {
+		if verbMapI, found = roleExt.ResourceMap.Get(resourceAttributes.Namespace); !found {
+			if verbMapI, found = roleExt.ResourceMap.Get("*"); !found {
 				return found
 			}
 		}
 
+		var apiGroupMapI interface{}
 		verbMap := verbMapI.(*hashmap.Map)
-		var resourceMapI interface{}
-		if resourceMapI, found = verbMap.Get(resourceAttributes.Resource); !found {
-			if resourceMapI, found = verbMap.Get("*"); !found {
+		if apiGroupMapI, found = verbMap.Get(resourceAttributes.Verb); !found {
+			if apiGroupMapI, found = verbMap.Get("*"); !found {
 				return found
 			}
 		}
 
-		resourceMap := resourceMapI.(*hashmap.Map)
-		var resourceNameMapI interface{}
-		if resourceNameMapI, found = resourceMap.Get(resourceAttributes.Namespace); !found {
-			if resourceNameMapI, found = resourceMap.Get("*"); !found {
+		apiGroup := resourceAttributes.Version
+		apiGroupMap := apiGroupMapI.(*hashmap.Map)
+		var resourceMapI interface{}
+		if resourceAttributes.Group != "" {
+			apiGroup = resourceAttributes.Group + "/" + apiGroup
+		}
+		if resourceMapI, found = apiGroupMap.Get(apiGroup); !found {
+			if resourceMapI, found = apiGroupMap.Get("*"); !found {
 				return found
+			}
+		}
+
+		var resourceNameMapI interface{}
+		resourceMap := resourceMapI.(*hashmap.Map)
+		var singular, plural string
+		if pluralize.IsPlural(resourceAttributes.Resource) {
+			plural = resourceAttributes.Resource
+			singular = pluralize.Singular(resourceAttributes.Resource)
+		} else if pluralize.IsSingular(resourceAttributes.Resource) {
+			plural = pluralize.Plural(resourceAttributes.Resource)
+			singular = resourceAttributes.Resource
+		} else {
+			plural = resourceAttributes.Resource
+			singular = resourceAttributes.Resource
+		}
+		if resourceNameMapI, found = resourceMap.Get(singular); !found {
+			if resourceNameMapI, found = resourceMap.Get(plural); !found {
+				if resourceNameMapI, found = resourceMap.Get("*"); !found {
+					return found
+				}
 			}
 		}
 
 		resourceNameMap := resourceNameMapI.(*hashmap.Map)
-		var apiGroupMapI interface{}
-		apiGroup := resourceAttributes.Version
-		if resourceAttributes.Group != "" {
-			apiGroup = resourceAttributes.Group + "/" + apiGroup
-		}
-		if apiGroupMapI, found = resourceNameMap.Get(apiGroup); !found {
-			if apiGroupMapI, found = resourceNameMap.Get("*"); !found {
+		if _, found = resourceNameMap.Get(resourceAttributes.Name); !found {
+			if _, found = resourceNameMap.Get("*"); !found {
 				return found
 			}
 		}
-
-		apiGroupMap := apiGroupMapI.(*hashmap.Map)
-		var namespaceMapI interface{}
-		if namespaceMapI, found = apiGroupMap.Get(resourceAttributes.Name); !found {
-			if namespaceMapI, found = apiGroupMap.Get("*"); !found {
-				return found
-			}
-		}
-
-		namespaceMap := namespaceMapI.(*hashmap.Map)
-		if _, found = namespaceMap.Get(resourceAttributes.Name); !found {
-			if _, found = namespaceMap.Get("*"); !found {
-				return found
-			}
-		}
-
 	} else if nonResourceAttributes := sar.Spec.NonResourceAttributes; nonResourceAttributes != nil {
 
 		var resourceMapI interface{}
-		if resourceMapI, found = roleExt.Get(nonResourceAttributes.Verb); !found {
-			if resourceMapI, found = roleExt.Get("*"); !found {
+		if resourceMapI, found = roleExt.NonResourceMap.Get(nonResourceAttributes.Verb); !found {
+			if resourceMapI, found = roleExt.NonResourceMap.Get("*"); !found {
 				return found
 			}
 		}
@@ -504,4 +524,62 @@ func resourceRoleFound(sar *authorizationv1.SubjectAccessReview, roleExt *hashma
 	}
 
 	return found
+}
+
+func CheckAllowRole(rolebindingExtNameList []string, sar *authorizationv1.SubjectAccessReview) (authorizationv1.SubjectAccessReviewStatus, bool) {
+	for _, roleBindingName := range rolebindingExtNameList {
+		// Allow List Check
+		roleBindingExtI, found := controllers.RoleBindingExtAllowMap.Get(roleBindingName)
+		if found {
+			roleBindingExt := roleBindingExtI.(controllers.RoleBindingExtInfo)
+			for _, roleExtName := range roleBindingExt.RoleExtNames {
+				roleExt, found := controllers.RoleExtMap.Get(roleExtName)
+				if found {
+					found = resourceRoleFound(sar, roleExt.(controllers.RoleExtInfo))
+					if found {
+						return authorizationv1.SubjectAccessReviewStatus{Allowed: true}, true
+					}
+				}
+			}
+		}
+	}
+
+	// Haven't Allow/Deny Rule
+	return authorizationv1.SubjectAccessReviewStatus{}, false
+}
+
+func CheckDenyRole(roleBindingExtNameList []string, sar *authorizationv1.SubjectAccessReview) (authorizationv1.SubjectAccessReviewStatus, bool) {
+	for _, roleBindingName := range roleBindingExtNameList {
+		// Deny List Check
+		roleBindingExtI, found := controllers.RoleBindingExtDenyMap.Get(roleBindingName)
+		if found {
+			roleBindingExt := roleBindingExtI.(controllers.RoleBindingExtInfo)
+			for _, roleExtName := range roleBindingExt.RoleExtNames {
+				roleExt, found := controllers.RoleExtMap.Get(roleExtName)
+				if found {
+					found = resourceRoleFound(sar, roleExt.(controllers.RoleExtInfo))
+					if found {
+						return authorizationv1.SubjectAccessReviewStatus{Denied: true, Reason: roleBindingExt.Message}, true
+					}
+				}
+			}
+		}
+	}
+
+	// Haven't Allow/Deny Rule
+	return authorizationv1.SubjectAccessReviewStatus{}, false
+}
+
+func SubjectAccessReviewResponse(w http.ResponseWriter, sar *authorizationv1.SubjectAccessReview) {
+
+	if resp, err := json.Marshal(sar); err != nil {
+		utils.HandleErr(err)
+	} else {
+		klog.Info(string(resp))
+
+		if _, err = w.Write(resp); err != nil {
+			klog.Errorf("Can't write response: %v", err)
+			http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
+		}
+	}
 }
