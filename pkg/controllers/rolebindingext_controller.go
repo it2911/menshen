@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/emirpasic/gods/maps/hashmap"
+	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/it2911/menshen/pkg/ext"
 	"github.com/it2911/menshen/pkg/utils"
 	"k8s.io/klog"
@@ -57,9 +58,8 @@ func (r *RoleBindingExtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 	roleBindingExtName := req.Name
 	roleBindingExt, err := ext.MenShenClientSet.RoleBindingExts().Get(req.Name, req.Namespace)
-	utils.HandleErr(err)
 
-	if roleBindingExt.UID == "" {
+	if err != nil {
 		if _, found := RoleBindingExtAllowMap.Get(roleBindingExtName); found {
 			RoleBindingExtAllowMap.Remove(roleBindingExtName)
 			klog.Infof("RoleBindingExtAllowMap remove %s .", roleBindingExtName)
@@ -72,36 +72,36 @@ func (r *RoleBindingExtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 		groupBindingKeys := GroupBindingMap.Keys()
 		for _, key := range groupBindingKeys {
-			roleBindingExtNamesI, _ := GroupBindingMap.Get(key)
-			roleBindingExtNames := roleBindingExtNamesI.([]string)
-			for i, name := range roleBindingExtNames {
-				if name == roleBindingExtName {
-					roleBindingExtNamesI = append(roleBindingExtNames[:i], roleBindingExtNames[i+1:]...)
-					logString, err := json.Marshal(roleBindingExtNamesI)
-					utils.HandleErr(err)
-					klog.Infof("GroupBindingMap ％s remove %s, left %s .", key, name, logString)
-					if len(roleBindingExtNamesI.([]string)) == 0 {
-						GroupBindingMap.Remove(key)
-						klog.Infof("%s is empty. Removed from GroupBindingMap.", key)
-					}
+			roleBindingExtNameListI, found := GroupBindingMap.Get(key)
+			if found {
+				roleBindingExtNameList := roleBindingExtNameListI.(*hashset.Set)
+				roleBindingExtNameList.Remove(roleBindingExtName)
+
+				logString, err := json.Marshal(roleBindingExtNameList)
+				utils.HandleErr(err)
+				klog.Infof("GroupBindingMap ％s remove %s, left %s .", key, roleBindingExtName, logString)
+
+				if roleBindingExtNameList.Size() == 0 {
+					GroupBindingMap.Remove(key)
+					klog.Infof("%s is empty. Removed from GroupBindingMap.", key)
 				}
 			}
 		}
 
 		userBindingKeys := UserBindingMap.Keys()
 		for _, key := range userBindingKeys {
-			roleBindingExtNamesI, _ := UserBindingMap.Get(key)
-			roleBindingExtNames := roleBindingExtNamesI.([]string)
-			for i, name := range roleBindingExtNames {
-				if name == roleBindingExtName {
-					roleBindingExtNamesI = append(roleBindingExtNames[:i], roleBindingExtNames[i+1:]...)
-					logString, err := json.Marshal(roleBindingExtNamesI)
-					utils.HandleErr(err)
-					klog.Infof("UserBindingMap ％s remove %s, left %s .", key, name, logString)
-					if len(roleBindingExtNamesI.([]string)) == 0 {
-						UserBindingMap.Remove(key)
-						klog.Infof("%s is empty. Removed from UserBindingMap.", key)
-					}
+			roleBindingExtNameListI, found := UserBindingMap.Get(key)
+			if found {
+				roleBindingExtNameList := roleBindingExtNameListI.(*hashset.Set)
+				roleBindingExtNameList.Remove(roleBindingExtName)
+
+				logString, err := json.Marshal(roleBindingExtNameList)
+				utils.HandleErr(err)
+				klog.Infof("GroupBindingMap ％s remove %s, left %s .", key, roleBindingExtName, logString)
+
+				if roleBindingExtNameList.Size() == 0 {
+					UserBindingMap.Remove(key)
+					klog.Infof("%s is empty. Removed from GroupBindingMap.", key)
 				}
 			}
 		}
@@ -110,26 +110,30 @@ func (r *RoleBindingExtReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 			if strings.EqualFold(subject.Kind, "User") ||
 				strings.EqualFold(subject.Kind, "ServiceAccount") {
 
-				if roleBindingExtNameList, found := UserBindingMap.Get(subject.Name); found {
-					roleBindingExtNameList = append(roleBindingExtNameList.([]string), roleBindingExtName)
+				roleBindingExtNameList := hashset.New()
+				roleBindingExtNameListI, found := UserBindingMap.Get(subject.Name)
+				if found {
+					roleBindingExtNameList = roleBindingExtNameListI.(*hashset.Set)
+					roleBindingExtNameList.Add(roleBindingExtName)
 					klog.Infof("UserBinding Map %s add %s into its binding list.", subject.Name, roleBindingExtName)
 				} else {
-					roleBindingExtNameList := []string{}
-					roleBindingExtNameList = append(roleBindingExtNameList, roleBindingExtName)
-					UserBindingMap.Put(subject.Name, roleBindingExtNameList)
+					roleBindingExtNameList.Add(roleBindingExtName)
 					klog.Infof("UserBinding Map %s add %s into its binding list.", subject.Name, roleBindingExtName)
 				}
+				UserBindingMap.Put(subject.Name, roleBindingExtNameList)
 			} else if strings.EqualFold(subject.Kind, "Group") {
 
-				if roleBindingExtNameList, found := GroupBindingMap.Get(subject.Name); found {
-					roleBindingExtNameList = append(roleBindingExtNameList.([]string), roleBindingExtName)
+				roleBindingExtNameList := hashset.New()
+				roleBindingExtNameListI, found := GroupBindingMap.Get(subject.Name)
+				if found {
+					roleBindingExtNameList = roleBindingExtNameListI.(*hashset.Set)
+					roleBindingExtNameList.Add(roleBindingExtName)
 					klog.Infof("GroupBinding Map %s add %s into its binding list.", subject.Name, roleBindingExtName)
 				} else {
-					rolebindingExtNameList := []string{}
-					rolebindingExtNameList = append(rolebindingExtNameList, roleBindingExtName)
-					GroupBindingMap.Put(subject.Name, rolebindingExtNameList)
+					roleBindingExtNameList.Add(roleBindingExtName)
 					klog.Infof("GroupBinding Map %s add %s into its binding list.", subject.Name, roleBindingExtName)
 				}
+				GroupBindingMap.Put(subject.Name, roleBindingExtNameList)
 			}
 		}
 

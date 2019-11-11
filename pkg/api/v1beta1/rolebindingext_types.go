@@ -35,8 +35,8 @@ type RoleBindingExtSpec struct {
 	Subjects  []Subject `json:"subjects,omitempty"`
 	RoleNames []string  `json:"roleNames,omitempty"`
 	Message   string    `json:"message,omitempty"`
-	Type      string    `json:"type,omitempty"`    // allow or deny
-	Crontab   string    `json:"crontab,omitempty"` //
+	Type      string    `json:"type,omitempty"` // allow or deny
+	Cron      string    `json:"cron,omitempty"` //
 }
 
 // RoleBindingExtStatus defines the observed state of RoleBindingExt

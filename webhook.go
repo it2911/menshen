@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/emirpasic/gods/maps/hashmap"
+	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/gertd/go-pluralize"
 	"github.com/it2911/menshen/pkg/controllers"
 	"github.com/it2911/menshen/pkg/utils"
@@ -372,9 +373,6 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//	klog.Info(string(body))
-	//fmt.Println(string(body))
-
 	scheme := runtime.NewScheme()
 	codecFactory := serializer.NewCodecFactory(scheme)
 	deserializer := codecFactory.UniversalDeserializer()
@@ -388,7 +386,7 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 
 	// Allow Role Check
 	if rolebindingExtNameListI, found := controllers.UserBindingMap.Get(sar.Spec.User); found {
-		sarRespState, found = CheckAllowRole(rolebindingExtNameListI.([]string), sar)
+		sarRespState, found = CheckAllowRole(rolebindingExtNameListI.(*hashset.Set), sar)
 		if found {
 			sar.Status = sarRespState
 			SubjectAccessReviewResponse(w, sar)
@@ -400,8 +398,8 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 		users, _ := controllers.GroupUserMap.Get(groupName)
 		for _, user := range users.([]string) {
 			if user == username {
-				if rolebindingExtNameListI, found := controllers.GroupBindingMap.Get(groupName); found {
-					sarRespState, found = CheckAllowRole(rolebindingExtNameListI.([]string), sar)
+				if roleBindingExtNameListI, found := controllers.GroupBindingMap.Get(groupName); found {
+					sarRespState, found = CheckAllowRole(roleBindingExtNameListI.(*hashset.Set), sar)
 					if found {
 						sar.Status = sarRespState
 						SubjectAccessReviewResponse(w, sar)
@@ -414,7 +412,7 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 
 	// Deny Role Check
 	if rolebindingExtNameListI, found := controllers.UserBindingMap.Get(sar.Spec.User); found {
-		sarRespState, found = CheckDenyRole(rolebindingExtNameListI.([]string), sar)
+		sarRespState, found = CheckDenyRole(rolebindingExtNameListI.(*hashset.Set), sar)
 		if found {
 			sar.Status = sarRespState
 			SubjectAccessReviewResponse(w, sar)
@@ -427,7 +425,7 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 		for _, user := range users.([]string) {
 			if user == username {
 				if rolebindingExtNameListI, found := controllers.GroupBindingMap.Get(groupName); found {
-					if sarRespState, found = CheckDenyRole(rolebindingExtNameListI.([]string), sar); found {
+					if sarRespState, found = CheckDenyRole(rolebindingExtNameListI.(*hashset.Set), sar); found {
 						sar.Status = sarRespState
 						SubjectAccessReviewResponse(w, sar)
 						return
@@ -526,8 +524,8 @@ func resourceRoleFound(sar *authorizationv1.SubjectAccessReview, roleExt control
 	return found
 }
 
-func CheckAllowRole(rolebindingExtNameList []string, sar *authorizationv1.SubjectAccessReview) (authorizationv1.SubjectAccessReviewStatus, bool) {
-	for _, roleBindingName := range rolebindingExtNameList {
+func CheckAllowRole(roleBindingExtNameList *hashset.Set, sar *authorizationv1.SubjectAccessReview) (authorizationv1.SubjectAccessReviewStatus, bool) {
+	for _, roleBindingName := range roleBindingExtNameList.Values() {
 		// Allow List Check
 		roleBindingExtI, found := controllers.RoleBindingExtAllowMap.Get(roleBindingName)
 		if found {
@@ -548,8 +546,8 @@ func CheckAllowRole(rolebindingExtNameList []string, sar *authorizationv1.Subjec
 	return authorizationv1.SubjectAccessReviewStatus{}, false
 }
 
-func CheckDenyRole(roleBindingExtNameList []string, sar *authorizationv1.SubjectAccessReview) (authorizationv1.SubjectAccessReviewStatus, bool) {
-	for _, roleBindingName := range roleBindingExtNameList {
+func CheckDenyRole(roleBindingExtNameList *hashset.Set, sar *authorizationv1.SubjectAccessReview) (authorizationv1.SubjectAccessReviewStatus, bool) {
+	for _, roleBindingName := range roleBindingExtNameList.Values() {
 		// Deny List Check
 		roleBindingExtI, found := controllers.RoleBindingExtDenyMap.Get(roleBindingName)
 		if found {

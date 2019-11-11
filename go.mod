@@ -18,7 +18,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/hashicorp/go-memdb v1.0.4 // indirect
 	github.com/jonboulle/clockwork v0.1.0 // indirect
-	github.com/logrusorgru/aurora v0.0.0-20191017060258-dc85c304c434
+	github.com/logrusorgru/aurora v0.0.0-20191017060258-dc85c304c434 // indirect
 	github.com/onsi/ginkgo v1.10.1
 	github.com/onsi/gomega v1.7.0
 	github.com/sirupsen/logrus v1.4.2 // indirect
